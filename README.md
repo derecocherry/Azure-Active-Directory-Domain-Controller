@@ -43,13 +43,13 @@ flowchart TB
         NSG --> NIC
         NIC --> VM
         VM -->|triggers after provisioning| Ext
-        Ext -->|Install-ADDSForest| DC["🏛️ Domain Controller<br/>corp.charles.com<br/>(auto-reboots)"]
+        Ext -->|Install-ADDSForest| DC["🏛️ Domain Controller<br/>corp.reco.com<br/>(auto-reboots)"]
     end
 ```
 
 **How it works:** Terraform provisions the network stack and VM first. Once the VM is running, the **Custom Script Extension** executes a PowerShell command that installs the `AD-Domain-Services` Windows feature and runs `Install-ADDSForest`, standing up a brand-new AD forest and rebooting the server automatically — no manual GUI steps at any point.
 
-> 🔑 **After the reboot, authentication changes.** The VM is no longer a standalone machine — log in with `CORP\adadmin` or `adadmin@corp.charles.com`, not the local account syntax.
+> 🔑 **After the reboot, authentication changes.** The VM is no longer a standalone machine — log in with `CORP\adadmin` or `adadmin@corp.reco.com`, not the local account syntax.
 
 ---
 
@@ -68,7 +68,7 @@ flowchart TB
 |---|---|---|
 | `yourname` | `reco` | Used to keep resource names unique |
 | `location` | `eastus` | Azure region |
-| `domain_name` | `corp.charles.com` | Fully qualified AD domain name |
+| `domain_name` | `corp.reco.com` | Fully qualified AD domain name |
 | `domain_netbios` | `CORP` | NetBIOS name, 15 characters max |
 | `admin_password` | *(sensitive)* | Local VM admin password |
 | `dsrm_password` | *(sensitive)* | Directory Services Restore Mode password — **cannot be retrieved after deployment** |
@@ -108,7 +108,7 @@ yourname       = "reco"
 location       = "eastus"
 admin_password = "[REDACTED]"
 dsrm_password  = "[REDACTED]"
-domain_name    = "corp.charles.com"
+domain_name    = "corp.reco.com"
 domain_netbios = "CORP"
 ```
 
@@ -130,7 +130,7 @@ terraform output public_ip
 | Method | Username | When to Use |
 |---|---|---|
 | Domain prefix | `CORP\adadmin` | ✅ Standard — try this first |
-| UPN format | `adadmin@corp.charles.com` | If domain prefix fails |
+| UPN format | `adadmin@corp.reco.com` | If domain prefix fails |
 | Local account | `.\adadmin` | Only if AD promotion failed |
 
 ⏳ **Wait 5–10 minutes after `apply` completes** before attempting to RDP — connecting during the post-promotion reboot can produce a failed session or black screen.
@@ -142,7 +142,7 @@ From an RDP session, in an elevated PowerShell prompt:
 Get-Service NTDS | Select-Object Name, Status      # AD DS service running
 Get-ADDomain                                         # Domain configuration
 Get-ADDomainController -Filter *                     # Lists this DC
-Resolve-DnsName corp.charles.com                      # DNS resolving correctly
+Resolve-DnsName corp.reco.com                      # DNS resolving correctly
 ```
 All four should return without errors.
 
@@ -162,7 +162,7 @@ az vm extension show \
 
 | Issue | Cause | Fix |
 |---|---|---|
-| RDP password not working | VM rebooted after promotion — auth now needs domain credentials | Use `CORP\adadmin` or `adadmin@corp.charles.com` |
+| RDP password not working | VM rebooted after promotion — auth now needs domain credentials | Use `CORP\adadmin` or `adadmin@corp.reco.com` |
 | Extension status: `Failed` | AD DS installation failed mid-run | Check `C:\WindowsAzure\Logs` on the VM; re-run `terraform apply` to retry |
 | RDP black screen | VM still mid-reboot after AD DS install | Wait 5 minutes and retry |
 | `Get-ADDomain` not found | AD module not loaded in session | Run `Import-Module ActiveDirectory`, then retry |
